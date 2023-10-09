@@ -1,92 +1,74 @@
+#IMPORTING
+import sys
+import os
 import cv2
-import time
-import datetime
+import easygui
 import numpy as np
-from scipy import signal
-from scipy.fftpack import fft, fftfreq, fftshift
-from sklearn.decomposition import PCA, FastICA
-from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
-# Change these variables based on the location of your cascade classifier
-PATH_TO_HAAR_CASCADES = "image_processing/" 
-face_cascade = cv2.CascadeClassifier(PATH_TO_HAAR_CASCADES+'haarcascade_frontalface_default.xml') # Full pathway must be used
-firstFrame = None
-time = []
-R = []
-G = []
-B = []
-pca = FastICA(n_components=3)
-cap = cv2.VideoCapture(0)
-if cap.isOpened() == False:
-    print("Failed to open webcam")
-frame_num = 0
-plt.ion()
-while cap.isOpened():
-    ret, frame = cap.read()
-    if ret == True:
-        frame_num += 1
-        if firstFrame is None:
-            start = datetime.datetime.now()
-            time.append(0)
-            # Take first frame and find face in it
-            firstFrame = frame
-            cv2.imshow("frame",firstFrame)
-            old_gray = cv2.cvtColor(firstFrame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(old_gray, 1.3, 5) 
-            if faces == ():
-                firstFrame = None
-            else:
-                for (x,y,w,h) in faces: 
-                    x2 = x+w
-                    y2 = y+h
-                    cv2.rectangle(firstFrame,(x,y),(x+w,y+h),(255,0,0),2)
-                    cv2.imshow("frame",firstFrame)
-                    VJ_mask = np.zeros_like(firstFrame)
-                    VJ_mask = cv2.rectangle(VJ_mask,(x,y),(x+w,y+h),(255,0,0),-1)
-                    VJ_mask = cv2.cvtColor(VJ_mask, cv2.COLOR_BGR2GRAY)
-                ROI = VJ_mask
-                ROI_color = cv2.bitwise_and(ROI,ROI,mask=VJ_mask)
-                cv2.imshow('ROI',ROI_color)
-                R_new,G_new,B_new,_ = cv2.mean(ROI_color,mask=ROI)
-                R.append(R_new)
-                G.append(G_new)
-                B.append(B_new)
+import imageio
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+#Reading the image
+ImagePath="C:\\Users\\K.KEERTHNA\\Desktop\\CV_Builders_Series\\task_1\\rdj.jpg"
+img1=cv2.imread(ImagePath)
+if img1 is None:
+        print("Can not find any image. Choose appropriate file")
+        sys.exit()
+img1=cv2.cvtColor(img1,cv2.COLOR_BGR2RGB)
 
-        else:
-            current = datetime.datetime.now()-start
-            current = current.total_seconds()
-            time.append(current)
-            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            ROI_color = cv2.bitwise_and(frame,frame)
-            cv2.imshow('ROI',ROI_color)
-            R_new,G_new,B_new,_ = cv2.mean(ROI_color)
-            R.append(R_new)
-            G.append(G_new)
-            B.append(B_new)
-            if frame_num >= 900:
-                N = 900
-                G_std = StandardScaler().fit_transform(np.array(G[-(N-1):]).reshape(-1, 1))
-                G_std = G_std.reshape(1, -1)[0]
-                R_std = StandardScaler().fit_transform(np.array(R[-(N-1):]).reshape(-1, 1))
-                R_std = R_std.reshape(1, -1)[0]
-                B_std = StandardScaler().fit_transform(np.array(B[-(N-1):]).reshape(-1, 1))
-                B_std = B_std.reshape(1, -1)[0]
-                T = 1/(len(time[-(N-1):])/(time[-1]-time[-(N-1)]))
-                X_f=pca.fit_transform(np.array([R_std,G_std,B_std]).transpose()).transpose()
-                N = len(X_f[0])
-                yf = fft(X_f[1])
-                yf = yf/np.sqrt(N)
-                xf = fftfreq(N, T)
-                xf = fftshift(xf)
-                yplot = fftshift(abs(yf))
-                plt.figure(1)
-                plt.gcf().clear()
-                fft_plot = yplot
-                fft_plot[xf<=0.75] = 0
-                
-                #print(str(xf[fft_plot[xf<=4].argmax()]*60)+' bpm')
-                plt.plot(xf[(xf>=0) & (xf<=4)], fft_plot[(xf>=0) & (xf<=4)])
-                plt.pause(0.0001)
+#Converting the color space from RGB to Grayscale
+img1g=cv2.cvtColor(img1,cv2.COLOR_RGB2GRAY)
+
+#Displaying all the images
+plt.imshow(img1)
+plt.axis("off")
+plt.title("Image 1 - original")
+plt.show()
+
+plt.imshow(img1g,cmap='gray')
+plt.axis("off")
+plt.title("Image 1 - grayscale")
+plt.show()
+
+#Median Blurring
+img1b=cv2.medianBlur(img1g,3)
+plt.imshow(img1b,cmap='gray')
+plt.axis("off")
+plt.title("AFTER MEDIAN BLURRING")
+plt.show()
+
+#Creating edge mask
+edges=cv2.adaptiveThreshold(img1b,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,3,3)
+plt.imshow(edges,cmap='gray')
+plt.axis("off")
+plt.title("Edge Mask")
+plt.show()
+
+#Removing noise
+img1bb=cv2.bilateralFilter(img1b, 15, 75, 75)
+plt.imshow(img1bb,cmap='gray')
+plt.axis("off")
+plt.title("AFTER BILATERAL BLURRING")
+plt.show()
+
+#Eroding and Dilating
+kernel=np.ones((1,1),np.uint8)
+img1e=cv2.erode(img1bb,kernel,iterations=3)
+img1d=cv2.dilate(img1e,kernel,iterations=3)
+plt.imshow(img1d,cmap='gray')
+plt.axis("off")
+plt.title("AFTER ERODING AND DILATING")
+plt.show()
+
+#Clustering - (K-MEANS)
+imgf=np.float32(img1).reshape(-1,3)
+criteria=(cv2.TERM_CRITERIA_EPS+cv2.TERM_CRITERIA_MAX_ITER,20,1.0)
+compactness,label,center=cv2.kmeans(imgf,5,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
+center=np.uint8(center)
+final_img=center[label.flatten()]
+final_img=final_img.reshape(img1.shape)
+
+final=cv2.bitwise_and(final_img,final_img,mask=edges)
+plt.imshow(final,cmap='gray')
+plt.axis("off")
+plt.title("FINAL")
+plt.show()
