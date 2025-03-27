@@ -1,62 +1,93 @@
 import cv2
 import numpy as np
-from scipy.fft import rfft, rfftfreq, irfft
 import matplotlib.pyplot as plt
+from scipy.fft import rfft, rfftfreq, irfft  # For Fourier Transform
 
-# Step 2: Read and collect green channel from video frames
-video = '"C:\\Users\\rishm\\OneDrive\\Desktop\\BUILD\\Fun with image processing\\Pulse\\finger.mp4"'
-cap = cv2.VideoCapture(video)
-#
-fps = cap.get(cv2.CAP_PROP_FPS)
-frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+video_path = "./After climbbing.mp4"  
 
-green_channel_data = []
+# Open the video file
+vid = cv2.VideoCapture(video_path)
+
+if not vid.isOpened():
+    print("Error: Cannot open video file.")
+    exit()
+
+fps = vid.get(cv2.CAP_PROP_FPS)  # Get video frame rate
+frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))  # Total frames
+video_duration = frame_count / fps  # Video duration in seconds
+
+green_means = []  # Store mean green intensity per frame
 
 while True:
-    ret, frame = cap.read()
+    ret, frame = vid.read()
     if not ret:
-        break
-    
-    green_channel = frame[:, :, 1]  # Extract the green channel (0: Blue, 1: Green, 2: Red)
-    green_channel_data.extend(green_channel.flatten())
+        break  # Exit when video ends
 
-cap.release()
+    green_channel = frame[:, :, 1]  # Extract green channel
+    green_means.append(green_channel.mean())  # Store mean intensity of frame
 
-# Check if the data is empty or too small for FFT
-if not green_channel_data:
-    print("No valid data found in the video.")
-else:
-    # Continue with signal processing
-    # ... (Rest of the code)
+vid.release()  # Release video capture
 
-# ... (Rest of the code)
+# Convert list to NumPy array
+green_means = np.array(green_means)
 
+# Compute mean normalization
+mean = np.mean(green_means)
+normalized_signal = green_means - mean
 
-    # Step 3: Mean normalize and visualize the signal
-    mean_value = np.mean(green_channel_data)
-    normalized_signal = np.array(green_channel_data) - mean_value
+# Plot the normalized signal over frames
+plt.figure(figsize=(12, 6))
+plt.plot(normalized_signal, color='b', label="Mean Normalized Green Signal")
+plt.title("Mean Normalized Green Channel Signal")
+plt.xlabel("Frame Index")
+plt.ylabel("Normalized Pixel Value")
+plt.grid(True)
+plt.legend()
+plt.show()
 
-    plt.figure(figsize=(12, 4))
-    plt.plot(normalized_signal)
-    plt.title('Normalized Signal')
-    plt.xlabel('Frame')
-    plt.ylabel('Pixel Value')
-    plt.show()
+# **Apply Fourier Transform (FFT) on the 1D mean signal**
+fourier_signals = rfft(normalized_signal)
+freqs = rfftfreq(len(normalized_signal), d=1 / fps)
 
-    # Step 4: Apply Fast Fourier Transform (FFT) to the signal
-    signal_fft = rfft(normalized_signal)
+# Plot the FFT Magnitude Spectrum
+plt.figure(figsize=(12, 6))
+plt.plot(freqs, np.abs(fourier_signals), color='r', label="FFT Magnitude Spectrum")
+plt.title("FFT of Normalized Green Channel Signal")
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Magnitude")
+plt.grid(True)
+plt.legend()
+plt.show()
 
-    # Step 5: Filter out unwanted frequencies and visualize
-    frequency = rfftfreq(len(normalized_signal), 1 / fps)
-    low_freq_limit = 0.45  # Minimum human pulse frequency (27 BPM)
-    high_freq_limit = 8.0  # Maximum human pulse frequency (480 BPM)
+# **Apply frequency filter (0.45 Hz to 8 Hz)**
+low_cutoff = 0.45  # 27 BPM
+high_cutoff = 8.0  # 480 BPM
 
-    # Filter out frequencies outside the pulse range
-    signal_fft[(frequency < low_freq_limit) | (frequency > high_freq_limit)] = 0
+filtered_fourier = fourier_signals.copy()
+filtered_fourier[(freqs < low_cutoff) | (freqs > high_cutoff)] = 0  # Remove unwanted frequencies
 
-    # Step 6: Calculate heart rate (BPM)
-    max_amplitude_freq = frequency[np.argmax(np.abs(signal_fft))]
-    heart_rate_bpm = max_amplitude_freq * 60
+# Apply inverse FFT to reconstruct the filtered signal
+filtered_signal = irfft(filtered_fourier)
 
-    print(f'Estimated Heart Rate: {heart_rate_bpm:.2f} BPM')
-printf('')
+# **Find the dominant frequency (peak amplitude)**
+dominant_freq = freqs[np.argmax(np.abs(filtered_fourier))]  # Frequency with highest amplitude
+
+# Calculate estimated pulse rate in BPM
+estimated_bpm = dominant_freq * 60  # Convert Hz to BPM
+
+# **Plot the filtered signal**
+plt.figure(figsize=(12, 6))
+plt.plot(filtered_signal, color='g', label="Filtered Signal (Pulse Range)")
+plt.title("Filtered Green Channel Signal (0.45 Hz to 8 Hz)")
+plt.xlabel("Frame Index")
+plt.ylabel("Filtered Pixel Value")
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# **Print results**
+print(f"Estimated Pulse Rate: {estimated_bpm:.2f} BPM")
+print(f"Dominant Frequency: {dominant_freq:.2f} Hz")
+print(f"Video Duration: {video_duration:.2f} seconds")
+
+cv2.destroyAllWindows()
