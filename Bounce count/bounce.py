@@ -11,6 +11,9 @@ fps = int(vid.get(cv2.CAP_PROP_FPS))
 bounce_count = 0
 bounces = [] 
 previous_y = None
+last_bounce_region = "N/A"
+last_bounce_time = 0.0
+
 
 pts = np.array([[10, 243], [194, 109], [329, 11], [482, 71], [687, 147], [577, 307], [415, 555], [178, 370]], dtype=np.int32)
 
@@ -20,7 +23,7 @@ matrix = cv2.getPerspectiveTransform(pts_src,pts_dst)
 
 
 # lower and upper bound for color from last program
-lowerBound = np.array([25,80,100])#lower and upper boundary for color range in HSV
+lowerBound = np.array([30,75,132])#lower and upper boundary for color range in HSV
 upperBound = np.array([45,255,255])
 
 
@@ -34,7 +37,7 @@ def ballDetection(frame, frameHSV):
         if area > 500: # to filter out noise. This avoids very small contours that could be noise
             x,y,w,h = cv2.boundingRect(ballContour) # this function returns position and size of bounding box for tracking
             # print(x,y,w,h)
-            cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2) # draw rectangle arounf blue box
+            cv2.rectangle(frame,(x,y),(x+w,y+h),(0, 0, 255),3) # draw rectangle arounf blue box
             return (x + w // 2, y + h)
 
  
@@ -77,10 +80,12 @@ while True:
     frameHSV = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
 
     warped = cv2.warpPerspective(frame,matrix,(200,400))
+    ballDetection(frame, frameHSV)
     ballPosition = ballDetection(warped, frameHSV)
 
     region = "N/A"  # Default value if ball is not detected
     bounce_time = 0.0  # Default time if no bounce occurs
+    
     if ballPosition:
         x, y = ballPosition
         region = getRegion(x, y)
@@ -93,14 +98,22 @@ while True:
             bounces.append([bounce_count, bounce_time, region, frame_num])
 
             print(f"Bounce {bounce_count}: Time={bounce_time}s, Region={region}, Frame={frame_num}")
+            last_bounce_region = region
+            last_bounce_time = bounce_time
 
         previous_y = y  # Update previous y-position
 
+    else:
+        # If no ball is detected, retain the last bounce information
+        region = last_bounce_region
+        bounce_time = last_bounce_time
+
     # Display frame
     text_y_offset = 20
-    cv2.putText(frame, f"Bounce: {bounce_count}", (10, 30 + text_y_offset * 0), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-    cv2.putText(frame, f"Region: {region}", (10, 30 + text_y_offset * 1), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-    cv2.putText(frame, f"Time: {bounce_time:.2f}s", (10, 30 + text_y_offset * 2), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    cv2.putText(frame, f"Count: {bounce_count}", (10, 30 + text_y_offset * 0), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    cv2.putText(frame, f"Time: {vid.get(cv2.CAP_PROP_POS_MSEC) / 1000:.3f}" + " s", (520, 30 + text_y_offset * 0), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    cv2.putText(frame, "Bounce detected at " + f"{bounce_time:.2f}s" + " on region " + f"{region}", (70, 550 + text_y_offset * 2), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+
 
     cv2.imshow("Video Feed", frame)
     cv2.imshow("Warped", warped)
