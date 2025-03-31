@@ -4,9 +4,9 @@ import numpy as np
 hueLow_warped = 20  # Initial guess, adjust as needed
 hueHigh_warped = 50 # Initial guess, adjust as needed
 satLow_warped = 70  # Initial guess, adjust as needed
-satHigh_warped = 255 # Initial guess, adjust as needed
+satHigh_warped = 120 # Initial guess, adjust as needed
 valLow_warped = 100  # Initial guess, adjust as needed
-valHigh_warped = 255 # Initial guess, adjust as needed
+valHigh_warped = 148 # Initial guess, adjust as needed
 
 def onTrackWarped1(val):
     global hueLow_warped
@@ -34,11 +34,11 @@ def onTrackWarped6(val):
 
 cv2.namedWindow('Trackbars - Warped')
 cv2.resizeWindow('Trackbars - Warped', 400, 300)
-cv2.createTrackbar('Hue Low', 'Trackbars - Warped', hueLow_warped, 179, onTrackWarped1)
-cv2.createTrackbar('Hue High', 'Trackbars - Warped', hueHigh_warped, 179, onTrackWarped2)
-cv2.createTrackbar('Sat Low', 'Trackbars - Warped', satLow_warped, 255, onTrackWarped3)
+cv2.createTrackbar('Hue Low', 'Trackbars - Warped', hueLow_warped, 42, onTrackWarped1)
+cv2.createTrackbar('Hue High', 'Trackbars - Warped', hueHigh_warped, 108, onTrackWarped2)
+cv2.createTrackbar('Sat Low', 'Trackbars - Warped', satLow_warped, 85, onTrackWarped3)
 cv2.createTrackbar('Sat High', 'Trackbars - Warped', satHigh_warped, 255, onTrackWarped4)
-cv2.createTrackbar('Val Low', 'Trackbars - Warped', valLow_warped, 255, onTrackWarped5)
+cv2.createTrackbar('Val Low', 'Trackbars - Warped', valLow_warped, 125, onTrackWarped5)
 cv2.createTrackbar('Val High', 'Trackbars - Warped', valHigh_warped, 255, onTrackWarped6)
 
 input_path = "./input.mov"

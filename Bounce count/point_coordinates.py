@@ -13,7 +13,7 @@ def mouseClick(event, xpos, ypos, flags, params):
 
     if event == cv2.EVENT_LBUTTONDOWN:
         p1 = (xpos, ypos)
-        cv2.circle(frame, (xpos, ypos), radius = 0, color = (0, 0, 255), thickness = 10)
+        cv2.circle(frame, (xpos, ypos), radius = 0, color = (0, 0, 255), thickness = 5)
         p1 = [p1[0], p1[1]]
         pts.append(p1)
         print(f"Point clicked: {p1}")
